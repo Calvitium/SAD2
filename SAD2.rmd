@@ -1,0 +1,110 @@
+---
+title: "SAD - projekt 2"
+author: "Mateusz Marciniewicz, Jakub Ficek"
+date: 2021-06-09
+output: html_document
+---
+# Zadanie 1
+
+Korzystając z danych zamieszczonych na stronie http://bit.ly/covid19-poland
+<ol>
+    <li>
+Sprawdź, czy proces szczepień przeciw SARS-CoV-2 przebiega równie szybko we wszystkich województwach,
+tzn. czy liczba szczepień jest proporcjonalna do populacji tych wojewdództw.
+    </li>
+    <li>
+Sprawdź, czy skuteczność leczenia osób zarażonych wirusem SARS-CoV-2 jest taka sama na terenie całej Polski, tzn. czy liczba przypadków śmiertelnych jest proporcjonalna do liczby osób zarażonych w poszczególnych
+województwach.
+    </li>
+    <li>
+W każdym z powyższych przypadków wskaż ewentualnie, które województwa istotnie się od siebie różnią
+pod kątem rozważanych statystyk.
+    </li>
+</ol>
+
+Województwa: Warmińsko-mazurskie, Podlaskie, Łódzkie, Świętokrzyskie, Pomorskie, Lubuskie, Wielkopolskie
+
+## Przygotowanie danych
+```{r}
+
+library(dplyr)
+library(tibble)
+library(ggplot2)
+
+regions <- c('warmińsko-mazurskie', 'podlaskie', 'łódzkie', 'świętokrzyskie', 'pomorskie', 'lubuskie', 'wielkopolskie')
+
+population <- c(1422737, 1178353, 2454779, 1233961, 2343928, 1011592, 3498733)
+vaccinations <- c(263721, 267059, 519258, 217296, 531317, 216534, 684786)
+cases <- c(121787, 69806, 179791, 72909, 192160, 73969, 285208)
+deaths <- c(2985, 2131, 5075, 2523, 4429, 2036, 7281)
+
+
+covid_df <- data.frame(population, vaccinations, cases, deaths)
+rownames(covid_df) <- regions
+
+print(covid_df)
+```
+
+## Sprawdzenie proporcjonalności szczepień (podpunkt a)
+
+#### Założenie: za zaszczepione osoby uważamy te, które przyjęły już dwie dawki.
+
+W celu sprawdzenia, czy proces szczepień przebiega równie szybko w każdym z rozważanych województw,
+możemy skorzystać z testu chi-kwadrat. Wyznaczenie wartości T określone jest wzorem:
+
+$T = \sum^r_{i=1}\frac{(v_i-np_i)^2}{np_i}$
+
+Będziemy zatem potrzebować następujących wartości:
+
+<ul>
+    <li> liczba zaszczepionych osób dla każdego z województw </li>
+    <li> prawdopodobieństwo, obliczane jako iloraz populacji w danym województwie oraz populacji całkowitej</li>
+</ul>
+
+Pierwszy wektor wartości otrzymaliśmy ze zbioru danych. Drugi natomiast uzyskujemy za pomocą obliczenia:
+
+```{r}
+covid_df <- covid_df %>% mutate(probability_for_vaccinations = population / sum(population))
+
+print(covid_df)
+```
+Przyjmijmy teraz pewne hipotezy:
+
+$H_0$ = tempo szczepienia jest proporcjonalne do populacji
+
+$H_1$ = tempo szczepienia nie jest propocjonalne do populacji
+
+Test przeprowadzamy na poziomie istotności 0.05.
+Zależy nam za czyli zależy nam zatem, aby szansa na otrzymany wynik (p-value) wynosiła co najmniej 0.95.
+```{r}
+chisq.test(covid_df$vaccinations, p=covid_df$probability_for_vaccinations)
+```
+### Wnioski
+
+Widzimy, że p-value jest bardzo małe, zdecydowanie dalekie od 95%.
+Możemy zatem odrzucić hipotezę zerową, jakoby proces szczepień odbywał się równomiernie we wszystkich województwach.
+
+## Sprawdzenie równomiernego rozkładu śmierci
+
+Do sprawdzenia możemy wykorzystać ten sam test, co w podpunkcie a) z tą różnicą, że zmienną testowaną będą śmierci,
+a prawdopodobieństwo obliczane będzie jako iloraz infekcji do sumy potwierdzonych przypadków zakażeń we wszystkich
+województwach.
+```{r}
+covid_df <- covid_df %>% mutate(probability_for_deaths = cases / sum(cases))
+
+print(covid_df)
+```
+Przyjmijmy teraz pewne hipotezy:
+
+$H_0$ = rozkład śmierci jest proporcjonalny
+
+$H_1$ = rozkład śmierci nie jest propocjonalny
+
+Test przeprowadzamy na poziomie istotności 0.05.
+Zależy nam za czyli zależy nam zatem, aby szansa na otrzymany wynik (p-value) wynosiła co najmniej 0.95.
+```{r}
+chisq.test(covid_df$deaths, p=covid_df$probability_for_deaths)
+```
+### Wnioski
+
+Znowu p-value jest zdecydowanie zbyt niska, a zatem hipoteza zerowa może zostać odrzucona.
