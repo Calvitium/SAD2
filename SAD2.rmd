@@ -26,6 +26,7 @@ Województwa: Warmińsko-mazurskie, Podlaskie, Łódzkie, Świętokrzyskie, Pomo
 
 ## Przygotowanie danych
 ```{r}
+knitr::opts_chunk$set(echo = FALSE)
 
 library(dplyr)
 library(tibble)
@@ -44,10 +45,23 @@ rownames(covid_df) <- regions
 
 print(covid_df)
 ```
-
 ## Sprawdzenie proporcjonalności szczepień (podpunkt a)
 
 #### Założenie: za zaszczepione osoby uważamy te, które przyjęły już dwie dawki.
+
+Zilustrujmy najpierw dane frakcje osób zaszczepionych (stosunek liczby zaszczepionych do populacji) w podziale na województwa.
+```{r}
+ggplot(covid_df, aes(x = regions, y = vaccinations * 100 / population)) +
+    theme_bw() +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = sprintf("%.1f", vaccinations * 100 / population), y = vaccinations * 100 / population), vjust = -0.5) +
+    labs(
+        title = "Procent zaszczepionych na COVID-19 w podziale na województwa",
+        x = "Województwa",
+        y = "Zaszczepieni [%]"
+    )
+```
+<br/>
 
 W celu sprawdzenia, czy proces szczepień przebiega równie szybko w każdym z rozważanych województw,
 możemy skorzystać z testu chi-kwadrat. Wyznaczenie wartości T określone jest wzorem:
@@ -75,7 +89,7 @@ $H_0$ = tempo szczepienia jest proporcjonalne do populacji
 $H_1$ = tempo szczepienia nie jest propocjonalne do populacji
 
 Test przeprowadzamy na poziomie istotności 0.05.
-Zależy nam za czyli zależy nam zatem, aby szansa na otrzymany wynik (p-value) wynosiła co najmniej 0.95.
+Zależy nam zatem, aby szansa na otrzymany wynik (p-value) wynosiła co najmniej 0.95.
 ```{r}
 chisq.test(covid_df$vaccinations, p=covid_df$probability_for_vaccinations)
 ```
@@ -84,7 +98,21 @@ chisq.test(covid_df$vaccinations, p=covid_df$probability_for_vaccinations)
 Widzimy, że p-value jest bardzo małe, zdecydowanie dalekie od 95%.
 Możemy zatem odrzucić hipotezę zerową, jakoby proces szczepień odbywał się równomiernie we wszystkich województwach.
 
-## Sprawdzenie równomiernego rozkładu śmierci
+## Sprawdzenie równomiernego rozkładu śmierci (podpunkt b)
+
+Zilustrujmy najpierw dane frakcje przypadków śmiertelnych (stosunek liczby śmierci z powodu koronawirusa do liczby potwierdzonych przypadków) w podziale na województwa.
+```{r}
+ggplot(covid_df, aes(x = regions, y = deaths * 100 / cases)) +
+    theme_bw() +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = sprintf("%.1f", deaths * 100 / cases), y = deaths * 100 / cases), vjust = -0.5) +
+    labs(
+        title = "Procent śmiertelnych przypadków z powodu COVID-19 w podziale na województwa",
+        x = "Województwa",
+        y = "Śmiertelne przypadki [%]"
+    )
+```
+<br/>
 
 Do sprawdzenia możemy wykorzystać ten sam test, co w podpunkcie a) z tą różnicą, że zmienną testowaną będą śmierci,
 a prawdopodobieństwo obliczane będzie jako iloraz infekcji do sumy potwierdzonych przypadków zakażeń we wszystkich
@@ -108,3 +136,17 @@ chisq.test(covid_df$deaths, p=covid_df$probability_for_deaths)
 ### Wnioski
 
 Znowu p-value jest zdecydowanie zbyt niska, a zatem hipoteza zerowa może zostać odrzucona.
+
+##  Badanie istotnych różnic pomiędzy województwami (podpunkt c)
+```{r}
+
+pairwise.prop.test(covid_df$vaccinations, covid_df$population)
+
+```
+Powyższa macierz trójkątna porównuje proporcje dla każdej pary województw.
+ Dobrze widać, że województwami wyróżniającymi się są województwa Łódzkie oraz Świętokrzyskie, które zachowują podobne proporcje szczepień do ludności (rząd 5, kolumna 2), co potwierdza największa p-value.
+```{r}
+pairwise.prop.test(covid_df$deaths, covid_df$cases)
+```
+W powyższej macierzy widać porównanie proporcji zgonów do wszystkich przypadków dla każdej pary województw.
+Najbardziej wyróżniającymi się województwami są tutaj województwa Podlaskie oraz Warmińsko-Mazurskie, co pokazuje największa p-value (rząd 6 kolumna 3).
